@@ -48,8 +48,6 @@ public class TaskControllerTest {
 
         for (int i = 0; i < devices.size(); i++) {
             final int m = i;
-            /*String ret = testRestTemplate.getForObject("/fetchTask?deviceId="+devices.get(m), String.class);
-            System.out.println(ret);*/
             executor.execute(() -> {
                 int j = 0;
                 while (j++ <= 4) {
@@ -68,7 +66,6 @@ public class TaskControllerTest {
         } catch (InterruptedException e) {
             throw new RuntimeException(e);
         }
-
     }
 
 }

@@ -2,15 +2,14 @@ package com.edata.scheduler.servivce.impl;
 
 import com.edata.scheduler.cache.DeviceCityCache;
 import com.edata.scheduler.model.City;
-import com.edata.scheduler.model.Task;
 import com.edata.scheduler.model.CityTaskPool;
+import com.edata.scheduler.model.Task;
 import com.edata.scheduler.servivce.ITaskService;
 import com.edata.scheduler.vo.TaskVO;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -26,6 +25,8 @@ import java.util.stream.Collectors;
 @Service
 public class TaskService implements ITaskService {
     /**
+     * 采用预分配方案，将设备与城市及其指定数量的任务关联(分配)，然后从设备管理的任务集合中拉取
+     *
      * 尽可能保证每个设备每次拉的任务是同一个城市的
      * 每个设备每天最多4个任务
      * 每个设备每天最多切换2个城市
@@ -57,6 +58,12 @@ public class TaskService implements ITaskService {
         return getTaskFromAssignedCity(deviceCityList);
     }
 
+    /**
+     * 从已分配的城市列表中获取任务
+     *
+     * @param deviceCityList 设备已分配的城市列表
+     * @return
+     */
     private TaskVO getTaskFromAssignedCity(List<City> deviceCityList){
         return deviceCityList.stream()
                 .flatMap(x->x.getTaskList().stream())
@@ -66,6 +73,13 @@ public class TaskService implements ITaskService {
                 .orElseGet(()->new TaskVO("",""));
     }
 
+    /**
+     * 优先从昨天关联的城市中拉取任务，即：
+     * 设备和城市要有对应关系 即一个设备今天是A城市 明天也是A城市 （第二天有A城市的任务的话）
+     * @param deviceId
+     * @param allCityList
+     * @param deviceCityList
+     */
     private void putTaskFromLastCity(String deviceId,List<City> allCityList,List<City> deviceCityList) {
         LocalDate yesterday = LocalDate.now().minusDays(1);
         String lastDeviceId = deviceId + yesterday;
