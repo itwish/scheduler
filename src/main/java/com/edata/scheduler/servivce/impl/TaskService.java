@@ -88,7 +88,7 @@ public class TaskService implements ITaskService {
      * @param city
      * @param deviceCityList
      */
-    private void putTaskFromCity(City city,List<City> deviceCityList){
+    private synchronized void putTaskFromCity(City city,List<City> deviceCityList){
         List<Task> taskList = city.getTaskList();
         int cityTaskNum = taskList.size();
         // 每个设备每天最多切换2个城市

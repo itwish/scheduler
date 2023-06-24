@@ -26,7 +26,6 @@ public class InitCityTaskPool implements ServletContextListener{
                 2023-06-17,重庆,3
                 2023-06-17,广州,1
                 2023-06-17,杭州,4
-                2023-06-17,兰州,5
             """;
         List<City> cityList = new ArrayList<>();
         cityTaskData.lines().forEach(s->{
