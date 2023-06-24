@@ -1,5 +1,6 @@
 package com.edata.scheduler.servivce.impl;
 
+import com.edata.scheduler.cache.DeviceCityCache;
 import com.edata.scheduler.model.City;
 import com.edata.scheduler.model.Task;
 import com.edata.scheduler.model.CityTaskPool;
@@ -12,6 +13,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
 /**
  * 任务拉取服务
@@ -23,8 +25,6 @@ import java.util.Map;
  */
 @Service
 public class TaskService implements ITaskService {
-    Map<String, List<City>> deviceCityMap = new HashMap<>();
-
     /**
      * 尽可能保证每个设备每次拉的任务是同一个城市的
      * 每个设备每天最多4个任务
@@ -40,25 +40,45 @@ public class TaskService implements ITaskService {
         LocalDate today = LocalDate.now();
         List<City> allCityList = CityTaskPool.getCityTaskByDate(today);
         // 尽可能保证每个设备每次拉的任务是同一个城市的：采用预分配方案，先从设备关联的城市中取
-        List<City> deviceCityList = deviceCityMap.get(deviceId);
+        String nowDeviceId = deviceId + today;
+        List<City> deviceCityList = DeviceCityCache.getDeviceCityByDeviceId(nowDeviceId);
         // 初始状态需要分配城市
         if (deviceCityList == null) {
             deviceCityList = new ArrayList<>();
-            deviceCityMap.put(deviceId,deviceCityList);
+            DeviceCityCache.putDeviceCity(nowDeviceId,deviceCityList);
         }
+        // 设备和城市要有对应关系 即一个设备今天是A城市 明天也是A城市 （第二天有A城市的任务的话）
+        putTaskFromLastCity(deviceId,allCityList,deviceCityList);
         // 设备数和城市数以及城市下的任务数都是动态的,因此可能会有更新处理
         for (City city : allCityList) {
             putTaskFromCity(city,deviceCityList);
         }
-        // 获取任务
-        TaskVO taskVO = deviceCityList.stream()
+        // 从设备已分配的城市列表中获取任务
+        return getTaskFromAssignedCity(deviceCityList);
+    }
+
+    private TaskVO getTaskFromAssignedCity(List<City> deviceCityList){
+        return deviceCityList.stream()
                 .flatMap(x->x.getTaskList().stream())
                 .filter(x->!x.getDone())
                 .findFirst()
                 .map(x-> {x.setDone(true); return new TaskVO(x.getCityName(),x.getTaskId());})
                 .orElseGet(()->new TaskVO("",""));
+    }
 
-        return taskVO;
+    private void putTaskFromLastCity(String deviceId,List<City> allCityList,List<City> deviceCityList) {
+        LocalDate yesterday = LocalDate.now().minusDays(1);
+        String lastDeviceId = deviceId + yesterday;
+        List<City> lastDeviceCityList = DeviceCityCache.getDeviceCityByDeviceId(lastDeviceId);
+        Map<String,City> allCityMap = allCityList.stream().collect(Collectors.toMap(City::getCityName,City->City));
+        if(lastDeviceCityList!=null){
+            for(City city : lastDeviceCityList){
+                City lastCity = allCityMap.get(city.getCityName());
+                if(lastCity!=null){
+                    putTaskFromCity(lastCity,deviceCityList);
+                }
+            }
+        }
     }
 
     /**

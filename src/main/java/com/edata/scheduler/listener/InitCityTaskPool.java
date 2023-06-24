@@ -23,10 +23,10 @@ public class InitCityTaskPool implements ServletContextListener{
     @Override
     public void contextInitialized(ServletContextEvent sce) {
         String cityTaskData = """
-                2023-06-17,重庆市,3
-                2023-06-17,广州市,1
-                2023-06-17,杭州市,4
-                2023-06-17,兰州市,5
+                2023-06-17,重庆,3
+                2023-06-17,广州,1
+                2023-06-17,杭州,4
+                2023-06-17,兰州,5
             """;
         List<City> cityList = new ArrayList<>();
         cityTaskData.lines().forEach(s->{
@@ -50,6 +50,6 @@ public class InitCityTaskPool implements ServletContextListener{
 
     @Override
     public void contextDestroyed(ServletContextEvent sce) {
-        logger.info("Shutdown mx cache init thread pool.");
+        logger.info("Shutdown and clear CityTaskPool.");
     }
 }
