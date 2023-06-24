@@ -1,5 +1,5 @@
 
 server:
   servlet:
-    context-path: /promotion
+    context-path: /scheduler
   port: 8021

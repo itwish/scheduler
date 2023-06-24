@@ -16,5 +16,5 @@ public class Task {
     private String platform;
 
     /** 是否已执行 */
-    private Boolean done;
+    private Boolean done=false;
 }

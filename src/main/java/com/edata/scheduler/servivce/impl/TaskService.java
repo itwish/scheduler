@@ -1,17 +1,23 @@
 package com.edata.scheduler.servivce.impl;
 
-import com.edata.scheduler.model.*;
+import com.edata.scheduler.model.City;
+import com.edata.scheduler.model.Task;
+import com.edata.scheduler.model.CityTaskPool;
 import com.edata.scheduler.servivce.ITaskService;
 import com.edata.scheduler.vo.TaskVO;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.util.*;
-
-import static com.edata.scheduler.cache.DeviceStateCache.getDeviceState;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 /**
  * 任务拉取服务
+ * 1.给设备分配城市任务，优先选取昨天已分配的城市
+ * 2.更新设备-城市列表中任务
+ * 3.从设备-城市列表中获取任务
  *
  * @author yugt 2023/6/23
  */
@@ -30,11 +36,9 @@ public class TaskService implements ITaskService {
      */
     @Override
     public TaskVO getTask(String deviceId) {
-        // 获取当天任务计划
+        // 获取当天城市任务列表
         LocalDate today = LocalDate.now();
-        TaskPlan taskPlan = TaskPool.getTaskPlanByDate(today);
-        // 获取所有城市列表
-        List<City> allCityList = taskPlan.getCityList();
+        List<City> allCityList = CityTaskPool.getCityTaskByDate(today);
         // 尽可能保证每个设备每次拉的任务是同一个城市的：采用预分配方案，先从设备关联的城市中取
         List<City> deviceCityList = deviceCityMap.get(deviceId);
         // 初始状态需要分配城市
@@ -42,70 +46,18 @@ public class TaskService implements ITaskService {
             deviceCityList = new ArrayList<>();
             deviceCityMap.put(deviceId,deviceCityList);
         }
-        // 设备数和城市数以及城市下的任务数都是动态的,因此每次拉取任务时都需要判断设备的已有城市列表中是否有新任务
+        // 设备数和城市数以及城市下的任务数都是动态的,因此可能会有更新处理
         for (City city : allCityList) {
             putTaskFromCity(city,deviceCityList);
         }
+        // 获取任务
         TaskVO taskVO = deviceCityList.stream()
                 .flatMap(x->x.getTaskList().stream())
                 .filter(x->!x.getDone())
                 .findFirst()
-                .map(x->new TaskVO(x.getCityName(),x.getTaskId()))
-                .get();
-        for(City city:deviceCityList){
-            for(Task task:city.getTaskList()){
-                if(task.getDone() == null || !task.getDone()){
-                    task.setDone(true);
-                    taskVO = new TaskVO(task.getCityName(),task.getTaskId());
-                    break;
-                }
-            }
-        }
+                .map(x-> {x.setDone(true); return new TaskVO(x.getCityName(),x.getTaskId());})
+                .orElseGet(()->new TaskVO("",""));
 
-        // 获取任务列表
-        for (City city : allCityList) {
-            String cityName = city.getCityName();
-            List<Task> taskList = city.getTaskList();
-            if (taskList.size() > 0) {
-                //
-                String key = deviceId + today;
-                DeviceState deviceState = getDeviceState(key);
-                Task task;
-                List<String> cityNames;
-                List<String> taskIds;
-                if (deviceState == null) {
-                    deviceState = new DeviceState();
-                    deviceState.setDeviceId(deviceId);
-                    cityNames = new ArrayList<>();
-                    cityNames.add(cityName);
-                    taskIds = new ArrayList<>();
-                    deviceState.setCityNames(cityNames);
-                    deviceState.setTaskIds(taskIds);
-                } else {
-                    cityNames = deviceState.getCityNames();
-                    taskIds = deviceState.getTaskIds();
-                    String cachedCity = cityNames.stream().filter(x -> x.equals(cityName)).findFirst().get();
-                    if (cachedCity == null) {
-                        // 每个设备每天最多切换2个城市
-                        if (cityNames.size() < 3) {
-                            cityNames.add(cityName);
-                        } else {
-                            break;
-                        }
-                    }
-                }
-                task = taskList.remove(0);
-                // 每个设备每天最多4个任务
-                if (taskIds.size() < 4) {
-                    taskIds.add(task.getTaskId());
-                } else {
-                    break;
-                }
-
-                taskVO = new TaskVO(cityName, task.getTaskId());
-
-            }
-        }
         return taskVO;
     }
 
@@ -128,8 +80,11 @@ public class TaskService implements ITaskService {
             if (newTaskNum > 0) {
                 String cityName = city.getCityName();
                 // 由于设备数和城市数以及城市下的任务数都是动态的，因此每次拉取任务时都需要判断设备的已有城市列表中是否有新任务
-                City deviceCity = deviceCityList.stream().filter(x->x.getCityName().equals(cityName)).findFirst().get();
-                // 若设备中无此城市，则创建该城市的新实例
+                City deviceCity = deviceCityList.stream()
+                        .filter(x->x.getCityName().equals(cityName))
+                        .findFirst()
+                        .orElse(null);
+                // 若设备中无此城市，则创建该城市的新实例,否则直接更新
                 if(deviceCity==null){
                     deviceCity = new City();
                     deviceCity.setCityName(cityName);
@@ -138,7 +93,7 @@ public class TaskService implements ITaskService {
                 // 每个设备每天最多4个任务
                 for (int i = 0; i < newTaskNum; i++) {
                     if (taskList.size() > 0) {
-                        // 将任务从源列表移除并分配给设备
+                        // 将任务从源列表移除并分配(更新)给设备
                         deviceCity.getTaskList().add(taskList.remove(0));
                     } else {
                         break;
