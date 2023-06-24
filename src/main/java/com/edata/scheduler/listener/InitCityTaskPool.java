@@ -14,14 +14,21 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
+ * 模拟生成当天任务列表
+ *
  * Created by yugt on 2019/2/13.
  */
 @WebListener
 public class InitCityTaskPool implements ServletContextListener{
     private static final Logger logger = LoggerFactory.getLogger(InitCityTaskPool.class);
 
+    /**
+     * 测试任务
+     * @param sce
+     */
     @Override
     public void contextInitialized(ServletContextEvent sce) {
+        // 测试数据
         String cityTaskData = """
                 2023-06-17,重庆,3
                 2023-06-17,广州,1

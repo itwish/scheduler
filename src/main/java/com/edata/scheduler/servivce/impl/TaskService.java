@@ -24,6 +24,10 @@ import java.util.stream.Collectors;
  */
 @Service
 public class TaskService implements ITaskService {
+    /** 最多可拉取任务数 */
+    private int MAX_TASK_NUM = 4;
+    /** 最多可关联城市数 */
+    private int MAX_CITY_NUM = 3;
     /**
      * 采用预分配方案，将设备与城市及其指定数量的任务关联(分配)，然后从设备管理的任务集合中拉取
      *
@@ -96,7 +100,7 @@ public class TaskService implements ITaskService {
     }
 
     /**
-     * 设备数和城市数以及城市下的任务数都是动态的,不是固定的,设备可以基于任务数来扩缩容
+     * 注意：设备数和城市数以及城市下的任务数都是动态的,不是固定的,设备可以基于任务数来扩缩容
      * 因此每次拉取任务时都需要判断设备的已有城市列表中是否有新任务
      *
      * @param city
@@ -106,11 +110,11 @@ public class TaskService implements ITaskService {
         List<Task> taskList = city.getTaskList();
         int cityTaskNum = taskList.size();
         // 每个设备每天最多切换2个城市
-        if (cityTaskNum > 0 && deviceCityList.size() <= 3) {
+        if (cityTaskNum > 0 && deviceCityList.size() <= MAX_CITY_NUM) {
             // 当前设备已分配的任务总数
             int nowTaskNum = deviceCityList.stream().map(x -> x.getTaskList().size()).reduce(0, Integer::sum);
             // 可领取的任务数量
-            int newTaskNum = 4 - nowTaskNum;
+            int newTaskNum = MAX_TASK_NUM - nowTaskNum;
             if (newTaskNum > 0) {
                 String cityName = city.getCityName();
                 // 由于设备数和城市数以及城市下的任务数都是动态的，因此每次拉取任务时都需要判断设备的已有城市列表中是否有新任务
