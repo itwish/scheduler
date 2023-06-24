@@ -1,0 +1,5 @@
+
+server:
+  servlet:
+    context-path: /promotion
+  port: 8021
