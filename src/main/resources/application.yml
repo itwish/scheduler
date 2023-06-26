@@ -3,3 +3,9 @@ server:
   servlet:
     context-path: /scheduler
   port: 8021
+
+device:
+  task:
+    maxNum: 4
+  city:
+    maxNum: 3
