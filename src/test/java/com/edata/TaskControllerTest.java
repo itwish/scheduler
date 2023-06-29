@@ -9,6 +9,7 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import java.util.stream.IntStream;
 
 /**
  * 测试拉取任务
@@ -32,7 +33,7 @@ public class TaskControllerTest {
      */
     @Test
     public void testFetchTask() {
-        List<String> devices = List.of("dev1", "dev2");
+        List<String> devices = IntStream.range(0, 40).mapToObj(i -> "dev" + i).toList();;
         String taskData = """
                     2023-06-17,重庆,3
                     2023-06-17,广州,1

@@ -28,11 +28,10 @@ public class InitCityTaskPool implements ServletContextListener{
      */
     @Override
     public void contextInitialized(ServletContextEvent sce) {
-        // 测试数据
+        // 测试数据 2023-06-17,杭州,4
         String cityTaskData = """
-                2023-06-17,重庆,3
-                2023-06-17,广州,1
-                2023-06-17,杭州,4
+                2023-06-17,重庆,30
+                2023-06-17,广州,20
             """;
         List<City> cityList = new ArrayList<>();
         cityTaskData.lines().forEach(s->{

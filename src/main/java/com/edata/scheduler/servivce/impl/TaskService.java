@@ -130,6 +130,7 @@ public class TaskService implements ITaskService {
                     deviceCity = new City();
                     deviceCity.setCityName(cityName);
                     deviceCity.setTaskList(new ArrayList<>());
+                    deviceCityList.add(deviceCity);
                 }
                 // 每个设备每天最多4个任务
                 for (int i = 0; i < newTaskNum; i++) {
@@ -140,7 +141,6 @@ public class TaskService implements ITaskService {
                         break;
                     }
                 }
-                deviceCityList.add(deviceCity);
             }
         }
     }
