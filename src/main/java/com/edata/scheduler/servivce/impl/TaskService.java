@@ -75,6 +75,10 @@ public class TaskService implements ITaskService {
         LocalDate yesterday = LocalDate.now().minusDays(1);
         String lastDeviceId = deviceId + yesterday;
         List<City> lastDeviceCityList = DeviceCityCache.getDeviceCityByDeviceId(lastDeviceId);
+        if(lastDeviceCityList==null){
+            lastDeviceId = deviceId + LocalDate.now().minusDays(2);
+            lastDeviceCityList = DeviceCityCache.getDeviceCityByDeviceId(lastDeviceId);
+        }
         Map<String,City> allCityMap = allCityList.stream().collect(Collectors.toMap(City::getCityName,City->City));
         TaskVO taskVO = null;
         if(lastDeviceCityList!=null){
