@@ -33,7 +33,7 @@ public class TaskControllerTest {
      */
     @Test
     public void testFetchTask() {
-        List<String> devices = IntStream.range(0, 2).mapToObj(i -> "dev" + i).toList();;
+        List<String> devices = IntStream.range(0, 3).mapToObj(i -> "dev" + i).toList();;
         String taskData = """
                     2023-06-17,重庆,3
                     2023-06-17,广州,1
@@ -46,11 +46,11 @@ public class TaskControllerTest {
         executor.setQueueCapacity(100);
         executor.initialize();
 
-        for (int i = 0; i < devices.size(); i++) {
-            final int m = i;
+        int j = 0;
+        while (j++ <= 5) {
             executor.execute(() -> {
-                int j = 0;
-                while (j++ <= 4) {
+                for (int i = 0; i < devices.size(); i++) {
+                    final int m = i;
                     // 若要并发执行，请将synchronized注释掉，这里只是为了方便演示
                     synchronized (this.getClass()){
                         System.out.println(devices.get(m)+"拉取任务:");
