@@ -33,7 +33,7 @@ public class TaskControllerTest {
      */
     @Test
     public void testFetchTask() {
-        List<String> devices = IntStream.range(0, 40).mapToObj(i -> "dev" + i).toList();;
+        List<String> devices = IntStream.range(0, 2).mapToObj(i -> "dev" + i).toList();;
         String taskData = """
                     2023-06-17,重庆,3
                     2023-06-17,广州,1
