@@ -83,13 +83,12 @@ public class TaskService implements ITaskService {
      * @param deviceCityList
      */
     private TaskVO getTaskFromYesterdayCity(String deviceId, List<City> allCityList, List<City> deviceCityList) {
-        LocalDate yesterday = LocalDate.now().minusDays(1);
-        String lastDeviceId = deviceId + yesterday;
-        List<City> lastDeviceCityList = DeviceCityCache.getDeviceCityByDeviceId(lastDeviceId);
+        String lastDeviceId;
+        List<City> lastDeviceCityList = null;
         // 处理场景：假设设备1第一天城市A 第二天由于各种原因没有跑（假设随机休息一天） 第三天过来也得优先城市A
         int n = 1;
         while (n <= maxIdleDays && lastDeviceCityList == null) {
-            lastDeviceId = deviceId + LocalDate.now().minusDays(++n);
+            lastDeviceId = deviceId + LocalDate.now().minusDays(n++);
             lastDeviceCityList = DeviceCityCache.getDeviceCityByDeviceId(lastDeviceId);
         }
         Map<String, City> allCityMap = allCityList.stream().collect(Collectors.toMap(City::getCityName, City -> City));
