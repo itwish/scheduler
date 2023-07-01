@@ -9,3 +9,5 @@ device:
     maxNum: 4
   city:
     maxNum: 3
+  # 设备最多可空闲天数，用于查找设备关联城市的历史记录
+  maxIdleDays: 2
