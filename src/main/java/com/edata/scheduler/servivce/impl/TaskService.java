@@ -10,10 +10,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDate;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 import java.util.stream.Collectors;
 
 /**
@@ -56,22 +53,31 @@ public class TaskService implements ITaskService {
      */
     @Override
     public TaskVO getTask(String deviceId) {
-        // 获取当天城市任务列表
-        LocalDate today = LocalDate.now();
-        List<City> allCityList = CityTaskPool.getCityTaskByDate(today);
-        // 尽可能保证每个设备每次拉的任务是同一个城市的
-        String nowDeviceId = deviceId + today;
+        // 获取当天所有城市任务列表
+        List<City> allCityList = CityTaskPool.getTodayCityTask();
+        // 获取当天设备已分配的城市任务列表
+        List<City> deviceCityList = getTodayAssinedCityList(deviceId);
+        // 根据昨天设备已分配的城市拉取今天的任务
+        TaskVO taskVO = getTaskFromYesterdayCity(deviceId, allCityList, deviceCityList);
+        // 拉取当天新任务
+        taskVO = taskVO == null ? getTaskFromCityList(deviceCityList, allCityList) : taskVO;
+        return Optional.ofNullable(taskVO).orElse(new TaskVO("", ""));
+    }
+
+    /**
+     * 获取今天已分配的城市列表
+     *
+     * @return
+     */
+    private List<City> getTodayAssinedCityList(String deviceId) {
+        String nowDeviceId = deviceId + LocalDate.now();
         List<City> deviceCityList = DeviceCityCache.getDeviceCityByDeviceId(nowDeviceId);
         // 初始状态需要分配城市
         if (deviceCityList == null) {
             deviceCityList = new ArrayList<>();
             DeviceCityCache.putDeviceCity(nowDeviceId, deviceCityList);
         }
-        // 设备和城市要有对应关系 即一个设备今天是A城市 明天也是A城市 （第二天有A城市的任务的话）
-        TaskVO taskVO = getTaskFromYesterdayCity(deviceId, allCityList, deviceCityList);
-        // 设备数和城市数以及城市下的任务数都是动态的,因此可能会有更新处理
-        taskVO = taskVO == null ? getTaskFromCityList(deviceCityList, allCityList) : taskVO;
-        return Optional.ofNullable(taskVO).orElse(new TaskVO("", ""));
+        return deviceCityList;
     }
 
     /**
@@ -91,19 +97,7 @@ public class TaskService implements ITaskService {
             lastDeviceId = deviceId + LocalDate.now().minusDays(n++);
             lastDeviceCityList = DeviceCityCache.getDeviceCityByDeviceId(lastDeviceId);
         }
-        Map<String, City> allCityMap = allCityList.stream().collect(Collectors.toMap(City::getCityName, City -> City));
-        TaskVO taskVO = null;
-        if (lastDeviceCityList != null) {
-            for (City city : lastDeviceCityList) {
-                City lastCity = allCityMap.get(city.getCityName());
-                if (lastCity != null) {
-                    taskVO = getTaskFromCity(deviceCityList, lastCity);
-                }
-                if (taskVO != null) {
-                    break;
-                }
-            }
-        }
+        TaskVO taskVO = lastDeviceCityList == null ? null : getTaskFromSameCities(lastDeviceCityList, deviceCityList, allCityList);
         return taskVO;
     }
 
@@ -112,33 +106,42 @@ public class TaskService implements ITaskService {
      * 因此每次拉取任务时都需要判断设备的已有城市列表中是否有新任务
      *
      * @param deviceCityList 设备关联的城市列表
-     * @param sourceCityList 源城市列表
+     * @param allCityList    源城市列表
      */
-    private TaskVO getTaskFromCityList(List<City> deviceCityList, List<City> sourceCityList) {
-        Map<String, City> allCityMap = sourceCityList.stream().collect(Collectors.toMap(City::getCityName, City -> City));
-        TaskVO taskVO = null;
-        // 尽可能保证每个设备每次拉的任务是同一个城市的
-        for (City deviceCity : deviceCityList) {
-            City city = allCityMap.get(deviceCity.getCityName());
-            if (city != null) {
-                taskVO = getTaskFromCity(deviceCityList, city);
-                if (taskVO != null) {
-                    break;
-                }
-            }
-        }
+    private TaskVO getTaskFromCityList(List<City> deviceCityList, List<City> allCityList) {
+        TaskVO taskVO = getTaskFromSameCities(null, deviceCityList, allCityList);
         // 从新的城市中获取任务
         if (taskVO == null) {
-            for (City city : sourceCityList) {
-                taskVO = getTaskFromCity(deviceCityList, city);
-                if (taskVO != null) {
-                    break;
-                }
-            }
+            taskVO = allCityList.stream()
+                    .map(city -> getTaskFromCity(deviceCityList, city))
+                    .filter(Objects::nonNull)
+                    .findFirst()
+                    .orElse(null);
         }
         return taskVO;
     }
 
+    /**
+     * 尽可能保证每个设备每次拉的任务是同一个城市的
+     *
+     * @param lastDeviceCityList 昨天或上一次设备分配的城市列表
+     * @param deviceCityList 当天设备分配的城市列表
+     * @param allCityList 总的城市列表
+     * @return
+     */
+    private TaskVO getTaskFromSameCities(List<City> lastDeviceCityList, List<City> deviceCityList, List<City> allCityList) {
+        Map<String, City> allCityMap = allCityList.stream().collect(Collectors.toMap(City::getCityName, City -> City));
+        if (lastDeviceCityList == null) {
+            lastDeviceCityList = deviceCityList;
+        }
+        return lastDeviceCityList.stream()
+                .map(d -> allCityMap.get(d.getCityName()))
+                .filter(Objects::nonNull)
+                .map(c -> getTaskFromCity(deviceCityList, c))
+                .filter(Objects::nonNull)
+                .findFirst()
+                .orElse(null);
+    }
 
     /**
      * 从城市中获取任务，并记录到缓存中

@@ -23,4 +23,9 @@ public class CityTaskPool {
         return cityTaskMap.get(dateKey);
     }
 
+    public static List<City> getTodayCityTask(){
+        LocalDate today = LocalDate.now();
+        return cityTaskMap.get(today);
+    }
+
 }
